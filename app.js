@@ -1,5 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const Service = require('./models/service');
 const Tab = require('./models/tab');
 
@@ -14,16 +15,23 @@ db.once('open', () => {
 const app = express();
 const port = 5000;
 
+// Configure CORS
+app.use(cors({
+  origin: 'http://localhost:5173', // Replace with your React app's origin
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
+  allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
+}));
+
 app.get('/', (req, res) => {
     res.send('Hello from Omari Stunner!');
 });
 
-app.get('/services', async (req, res) => {
+app.get('/api/services', async (req, res) => {
     const services = await Service.find({});
     res.json(services);
 });
 
-app.get('/tabs', async (req, res) => {
+app.get('/api/tabs', async (req, res) => {
     const tabs = await Tab.find({});
     res.json(tabs);
 });
