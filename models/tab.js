@@ -10,6 +10,11 @@ const TabSchema = new Schema({
         type: String,
         required: [true, 'Tab label cannot be blank']
     },
+    active: {
+        type: Boolean,
+        default: false,
+        require
+    },
 });
 
 module.exports = mongoose.model('Tab', TabSchema);
