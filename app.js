@@ -9,10 +9,12 @@ const cors = require('cors');
 
 const dbName = process.env.DB;
 const ExpressError = require('./utils/ExpressError');
+const {handleValidationError, handleCastError} = require('./utils/errorHandlers');
 
 const services = require('./routes/services');
 const images = require('./routes/images');
 const tabs = require('./routes/tabs');
+const bookings = require('./routes/bookings');
 
 mongoose.connect(`mongodb://localhost:27017/${dbName}`);
 
@@ -43,18 +45,13 @@ app.use('/api/images', images);
 app.use('/api/tabs', tabs);
 // if setting /:id here, got to route file and add {mergeParams: true} to express.Router(add here)
 
+app.use('/api/bookings', bookings);
+
 
 app.get('/', (req, res) => {
     res.send('Hello from Omari Stunner!');
 });
 
-const handleValidationError = err => {
-    return new ExpressError(400, `Validation Failed: ${err.message}`);
-};
-
-const handleCastError = err => {
-    return new ExpressError(400, `Invalid entry: ${err.message}`);
-};
 
 app.all(/(.*)/, (req, res, next) => {
     next(new ExpressError(404, 'Page Not Found'));
