@@ -3,7 +3,7 @@ const router = express.Router();
 
 const services = require('../controllers/services');
 const handleAsync = require('../utils/handleAsync');
-const {validateService} = require('../middleware');
+const {validateService} = require('../utils/middleware');
 
 
 router.route('/')

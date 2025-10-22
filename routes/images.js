@@ -6,7 +6,7 @@ const upload = multer({ storage });
 
 const images = require('../controllers/images');
 const handleAsync = require('../utils/handleAsync');
-const {validateImage} = require('../middleware');
+const {validateImage} = require('../utils/middleware');
 
 
 router.route('/')
