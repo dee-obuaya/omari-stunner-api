@@ -7,7 +7,7 @@ module.exports.index = async (req, res) => {
     if (services.length > 0) {
         res.status(200).json(services);
     } else {
-        res.send({message: 'No service found'});
+        res.status(404).json({message: 'No service found'});
         throw new ExpressError(400, 'No service found');
     };
 };
@@ -20,6 +20,7 @@ module.exports.addService = async (req, res) => {
         tag: tag,
         price: price,
     });
+
     await newService.save();
     res.status(200).json(newService);
 };
@@ -32,9 +33,10 @@ module.exports.updateService = async(req, res) => {
     const updatedService = await Service.findByIdAndUpdate(id, {service, tag, price}, { new: true, runValidators: true });
 
     if (!updatedService) {
-        res.send({message: 'Service not found'});
-        throw new ExpressError(404, 'Service not found');
-    }
+        res.status(400).json({message: 'Could not update service'});
+        throw new ExpressError(404, 'Could not update service');
+    };
+
     res.status(200).json(updatedService);
 };
 
@@ -43,8 +45,8 @@ module.exports.deleteService = async (req, res) => {
 
     const deletedService = await Service.findByIdAndDelete(id);
     if (!deletedService) {
-        return res.status(404).json({ message: 'Service not found.' });
+        return res.status(400).json({ message: 'Could not delete service' });
     }
 
-    res.json({ message: 'Service deleted successfully.' });
-}
+    res.json({ message: 'Service deleted successfully' });
+};
