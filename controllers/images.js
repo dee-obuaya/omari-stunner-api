@@ -78,9 +78,9 @@ module.exports.deleteImage = async (req, res) => {
 
     const deletedImage = await Image.findByIdAndDelete(id);
     if (!deletedImage) {
-        res.status(404).json({ message: 'Image not found.' });
-        throw new ExpressError(404, 'Image Not Found');
+        res.status(404).json({ message: 'Could not delete image' });
+        throw new ExpressError(404, 'Could not delete image');
     }
 
-    res.status(200).json({ message: 'Image deleted successfully.' });
+    res.status(200).json({ message: 'Image deleted successfully' });
 };
