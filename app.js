@@ -11,10 +11,11 @@ const dbName = process.env.DB;
 const ExpressError = require('./utils/ExpressError');
 const {handleValidationError, handleCastError} = require('./utils/errorHandlers');
 
-const services = require('./routes/services');
-const images = require('./routes/images');
-const tabs = require('./routes/tabs');
-const bookings = require('./routes/bookings');
+const serviceRouter = require('./routes/services');
+const imageRouter = require('./routes/images');
+const tabRouter = require('./routes/tabs');
+const bookingRouter = require('./routes/bookings');
+const dashboardRouter = require('./routes/dashboard');
 
 mongoose.connect(`mongodb://localhost:27017/${dbName}`);
 
@@ -38,14 +39,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 
-app.use('/api/services', services)
+app.use('/api/services', serviceRouter)
 
-app.use('/api/images', images);
+app.use('/api/images', imageRouter);
 
-app.use('/api/tabs', tabs);
+app.use('/api/tabs', tabRouter);
 // if setting /:id here, got to route file and add {mergeParams: true} to express.Router(add here)
 
-app.use('/api/bookings', bookings);
+app.use('/api/bookings', bookingRouter);
+
+app.use('/api/dashboard', dashboardRouter);
 
 
 app.get('/', (req, res) => {
