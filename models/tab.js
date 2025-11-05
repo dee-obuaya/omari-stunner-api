@@ -13,7 +13,6 @@ const TabSchema = new Schema({
     active: {
         type: Boolean,
         default: false,
-        require
     },
 });
 
