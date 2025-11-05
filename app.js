@@ -5,6 +5,10 @@ if (process.env.NODE_ENV !=='production') {
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const session = require('express-session');
+const passport = require('passport');
+const LocalStrategy = require('passport-local');
+const User = require('./models/user')
 
 
 const dbName = process.env.DB;
@@ -16,6 +20,8 @@ const imageRouter = require('./routes/images');
 const tabRouter = require('./routes/tabs');
 const bookingRouter = require('./routes/bookings');
 const dashboardRouter = require('./routes/dashboard');
+const userRouter = require('./routes/users');
+const authRouter = require('./routes/auth');
 
 mongoose.connect(`mongodb://localhost:27017/${dbName}`);
 
@@ -28,16 +34,36 @@ db.once('open', () => {
 const app = express();
 const port = process.env.PORT;
 
+const sessionConfig = {
+    secret: process.env.SESSION_KEY,
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+        httpOnly: true,
+        // expires: Date.now() + 1000 * 60 * 60, //Date.now() + ms * s * m * h * d
+        maxAge: 1000 * 60 * 5
+    }
+}
+
 // Configure CORS
 app.use(cors({
-  origin: 'http://localhost:5173',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
-  allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
+    origin: 'http://localhost:5173',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
+    allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
+    credentials: true,
 }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use(session(sessionConfig));
+
+app.use(passport.initialize());
+app.use(passport.session());
+passport.use(new LocalStrategy(User.authenticate()));
+
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
 
 app.use('/api/services', serviceRouter)
 
@@ -49,6 +75,10 @@ app.use('/api/tabs', tabRouter);
 app.use('/api/bookings', bookingRouter);
 
 app.use('/api/dashboard', dashboardRouter);
+
+app.use('/api/users', userRouter);
+
+app.use('/auth', authRouter);
 
 
 app.get('/', (req, res) => {
