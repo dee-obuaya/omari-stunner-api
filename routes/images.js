@@ -6,21 +6,21 @@ const upload = multer({ storage });
 
 const images = require('../controllers/images');
 const handleAsync = require('../utils/handleAsync');
-const {validateImage} = require('../utils/middleware');
+const {validateImage, ensureAuthenticated} = require('../utils/middleware');
 
 
 router.route('/')
-    .get(handleAsync(images.index))
-    .post(upload.single('image'), validateImage, handleAsync(images.uploadImage));
+    .get(ensureAuthenticated, handleAsync(images.index))
+    .post(ensureAuthenticated, upload.single('image'), validateImage, handleAsync(images.uploadImage));
 
 
-router.post('/multiple', upload.array('image'), handleAsync(images.uploadImages));
+router.post('/multiple', ensureAuthenticated, upload.array('image'), handleAsync(images.uploadImages));
 
 
-router.post('/import', upload.single('file'), handleAsync(images.importImages));
+router.post('/import', ensureAuthenticated, upload.single('file'), handleAsync(images.importImages));
 
 
-router.delete('/:id', handleAsync(images.deleteImage));
+router.delete('/:id', ensureAuthenticated, handleAsync(images.deleteImage));
 
 
 module.exports = router;

@@ -3,17 +3,17 @@ const router = express.Router();
 
 const services = require('../controllers/services');
 const handleAsync = require('../utils/handleAsync');
-const {validateService} = require('../utils/middleware');
+const {validateService, ensureAuthenticated} = require('../utils/middleware');
 
 
 router.route('/')
-    .get(handleAsync(services.index))
-    .post(validateService, handleAsync(services.addService));
+    .get(ensureAuthenticated, handleAsync(services.index))
+    .post(ensureAuthenticated, validateService, handleAsync(services.addService));
 
 
 router.route('/:id')
-    .put(validateService, handleAsync(services.updateService))
-    .delete(handleAsync(services.deleteService));
+    .put(ensureAuthenticated, validateService, handleAsync(services.updateService))
+    .delete(ensureAuthenticated, handleAsync(services.deleteService));
 
 
 module.exports = router;
