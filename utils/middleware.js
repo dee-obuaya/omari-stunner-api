@@ -89,7 +89,7 @@ module.exports.handleLogin = (req, res, next) => {
     })(req, res, next);
 };
 
-module.exports.ensureAuthenticated = (req, res, next) => {
+module.exports.isLoggedIn = (req, res, next) => {
     if (req.isAuthenticated()) return next();
     return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
 };

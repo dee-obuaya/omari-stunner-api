@@ -3,19 +3,19 @@ const router = express.Router();
 
 const dashboard = require('../controllers/dashboard');
 const handleAsync = require('../utils/handleAsync');
-const {ensureAuthenticated} = require('../utils/middleware');
+const {isLoggedIn} = require('../utils/middleware');
 
 
 router.route('/bookingsPerMonth')
-    .get(ensureAuthenticated, handleAsync(dashboard.getGroupedBookings));
+    .get(isLoggedIn, handleAsync(dashboard.getGroupedBookings));
 
 
 router.route('/bookedServiceCount')
-    .get(ensureAuthenticated, handleAsync(dashboard.bookedServiceCount));
+    .get(isLoggedIn, handleAsync(dashboard.bookedServiceCount));
 
 
 router.route('/statistics')
-    .get(ensureAuthenticated, handleAsync(dashboard.getStatistics));
+    .get(isLoggedIn, handleAsync(dashboard.getStatistics));
 
 
 module.exports = router;
