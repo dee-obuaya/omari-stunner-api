@@ -52,7 +52,8 @@ const sessionConfig = {
         // expires: Date.now() + 1000 * 60 * 60, //Date.now() + ms * s * m * h * d
         maxAge: 1000 * 60 * 60,
         secure: process.env.NODE_ENV === 'production'
-    }
+    },
+    rolling: true, // refresh expiry on every request
 }
 
 // Configure CORS
