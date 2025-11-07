@@ -37,3 +37,13 @@ module.exports.logOutUser = async (req, res) => {
         });
     });
 };
+
+module.exports.refreshSession = (req, res) => {
+    if (req.isAuthenticated()) {
+        // touch session to reset expiry
+        req.session.touch();
+        res.status(200).json({ success: true, message: 'Session refreshed' });
+    } else {
+        res.status(401). json({ success: false, message: 'Not authenticated' });
+    }
+};
