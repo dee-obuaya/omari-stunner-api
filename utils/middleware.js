@@ -78,7 +78,7 @@ module.exports.handleLogin = (req, res, next) => {
 
             // Attach user for next middleware
             req.authenticatedUser = {
-                // id: user.id,
+                id: user.id,
                 name: user.name,
                 role: user.role,
             };
@@ -93,3 +93,11 @@ module.exports.isLoggedIn = (req, res, next) => {
     if (req.isAuthenticated()) return next();
     return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
 };
+
+module.exports.isAdmin = (req, res, next) => {
+    if (req.isAuthenticated() && req.user.role === 'admin') {
+        return next();
+    }
+    res.status(403).json({ message: 'Forbidden: Admins only.' });
+};
+
