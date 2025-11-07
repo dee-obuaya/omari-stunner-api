@@ -8,13 +8,17 @@ const cors = require('cors');
 const session = require('express-session');
 const passport = require('passport');
 const LocalStrategy = require('passport-local');
-const User = require('./models/user')
+const MongoStore = require('connect-mongo');
 
 
-const dbName = process.env.DB;
+const dbUrl = process.env.DB_URL;
 const ExpressError = require('./utils/ExpressError');
 const {handleValidationError, handleCastError} = require('./utils/errorHandlers');
 
+// Model Imports
+const User = require('./models/user')
+
+// Router Imports
 const serviceRouter = require('./routes/services');
 const imageRouter = require('./routes/images');
 const tabRouter = require('./routes/tabs');
@@ -23,7 +27,7 @@ const dashboardRouter = require('./routes/dashboard');
 const userRouter = require('./routes/users');
 const authRouter = require('./routes/auth');
 
-mongoose.connect(`mongodb://localhost:27017/${dbName}`);
+mongoose.connect(dbUrl);
 
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
@@ -38,10 +42,16 @@ const sessionConfig = {
     secret: process.env.SESSION_KEY,
     resave: false,
     saveUninitialized: true,
+    store: MongoStore.create({
+        mongoUrl: dbUrl,
+        collectionName: 'sessions',
+        // ttl: 60 * 60,
+    }),
     cookie: {
         httpOnly: true,
         // expires: Date.now() + 1000 * 60 * 60, //Date.now() + ms * s * m * h * d
-        maxAge: 1000 * 60 * 5
+        maxAge: 1000 * 60 * 60,
+        secure: process.env.NODE_ENV === 'production'
     }
 }
 
@@ -62,8 +72,17 @@ app.use(passport.initialize());
 app.use(passport.session());
 passport.use(new LocalStrategy(User.authenticate()));
 
-passport.serializeUser(User.serializeUser());
-passport.deserializeUser(User.deserializeUser());
+passport.serializeUser((user, done) => {
+    done(null, user._id);
+});
+passport.deserializeUser(async (id, done) => {
+    try {
+        const user = await User.findById(id);
+        done(null, user);
+    } catch (err) {
+        done(err);
+    }
+});
 
 app.use('/api/services', serviceRouter)
 
