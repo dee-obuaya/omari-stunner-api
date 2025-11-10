@@ -7,10 +7,10 @@ const {isLoggedIn, isAdmin} = require('../utils/middleware');
 
 router.route('/')
     .get(isLoggedIn, handleAsync(userController.getUsers))
-    .post(isLoggedIn, handleAsync(userController.addUser));
+    .post(isLoggedIn, isAdmin, handleAsync(userController.addUser));
 
 router.put('/reset-password/:id', isLoggedIn, isAdmin, handleAsync(userController.resetPassword))
 
-
+router.delete('/:id', isLoggedIn, isAdmin, handleAsync(userController.deleteUser));
 
 module.exports = router
