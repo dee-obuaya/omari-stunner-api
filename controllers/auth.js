@@ -42,8 +42,17 @@ module.exports.refreshSession = (req, res) => {
     if (req.isAuthenticated()) {
         // touch session to reset expiry
         req.session.touch();
-        res.status(200).json({ success: true, message: 'Session refreshed' });
+
+
+        const maxAge = req.session.cookie.maxAge || 1000 * 60 * 30
+
+        res.status(200).json({
+            success: true,
+            message: 'Session refreshed successfully',
+            maxAge: maxAge,
+        });
     } else {
+        console.error('Error refreshing session: ', err);
         res.status(401). json({ success: false, message: 'Not authenticated' });
     }
 };
