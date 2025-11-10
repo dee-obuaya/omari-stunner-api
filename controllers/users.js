@@ -91,4 +91,14 @@ module.exports.resetPassword = async (req, res) => {
     }
 };
 
-module.exports.deleteUser = async (req, res) => {};
+module.exports.deleteUser = async (req, res) => {
+    const {id} = req.params;
+
+    const deleted = await User.findByIdAndDelete(id);
+
+    if (!deleted) {
+        return res.status(400).json({ message: 'Could not delete user' });
+    };
+
+    res.json({ message: 'User deleted successfully.' });
+};
