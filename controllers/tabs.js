@@ -5,7 +5,7 @@ module.exports.index = async (req, res) => {
     const tabs = await Tab.find({});
 
     if (tabs.length > 0) {
-        res.status(200).json(tabs);
+        res.status(200).json({tabs: tabs});
     } else {
         res.status(404).json({message: 'No tabs found'});
         throw new ExpressError(404, 'Tabs Not Found');

@@ -2,14 +2,54 @@ const Service = require('../models/service');
 const ExpressError = require('../utils/ExpressError');
 
 module.exports.index = async (req, res) => {
-    const services = await Service.find({});
+    try {
+        // parse query params
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const sortField = req.query.sort || 'created_at';
+        const sortOrder = req.query.order || 'desc' ? -1 : 1;
 
-    if (services.length > 0) {
-        res.status(200).json(services);
-    } else {
-        res.status(404).json({message: 'No service found'});
-        throw new ExpressError(400, 'No service found');
-    };
+        // ------ Filters ------
+        const filters = {};
+        if (req.query.tag && req.query.tag !== 'All') {
+            filters.tag = req.query.tag;
+        };
+        if (req.query.search) {
+            filters.$or = [
+                // { 'service.tag': { $regex: req.query.search, $options: 'i' } },
+                { 'service.name': { $regex: req.query.search, $options: 'i' } }
+            ];
+        };
+
+        const skip = (page - 1) * limit
+
+        // ------ Queries ------
+        const [services, total] = await Promise.all([
+            Service.find(filters)
+                .sort({ [sortField]: sortOrder })
+                .skip(skip)
+                .limit(limit),
+                Service.countDocuments(filters),
+        ]);
+        // const services = await Service.find({});
+
+        // ------ Response ------
+        if (services.length > 0) {
+            res.status(200).json({
+                services: services,
+                pagination: {
+                    totalItems: total,
+                    totalPages: Math.ceil(total / limit),
+                    currentPage: page,
+                }
+            });
+        } else {
+            res.status(404).json({message: 'No service found'});
+        };
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({message: 'Failed to fetch services'});
+    }
 };
 
 module.exports.addService = async (req, res) => {

@@ -4,10 +4,31 @@ const {invalidateUserSessions} = require('../utils/invalidateSessions');
 
 
 module.exports.getUsers = async (req, res) => {
-    const users = await User.find({});
+    // parse query params
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
 
+    const skip = (page - 1) * limit
+
+    // ------ Queries ------
+    const [users, total] = await Promise.all([
+        User.find({})
+            .skip(skip)
+            .limit(limit),
+            User.countDocuments({}),
+    ]);
+    // const users = await User.find({});
+
+    // ------ Response ------
     if (users.length > 0) {
-        res.status(200).json({ users: users });
+        res.status(200).json({
+            users: users,
+            pagination: {
+                totalItems: total,
+                totalPages: Math.ceil(total/limit),
+                currentPage: page,
+            }
+        });
     } else {
         res.json({message: 'No users found'});
     };
