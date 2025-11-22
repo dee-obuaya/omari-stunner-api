@@ -7,7 +7,7 @@ const {validateTab, isLoggedIn} = require('../utils/middleware');
 
 
 router.route('/')
-    .get(isLoggedIn, handleAsync(tabs.index))
+    .get(handleAsync(tabs.index))
     .post(isLoggedIn, validateTab, handleAsync(tabs.addTab));
 
 router.route('/:id')

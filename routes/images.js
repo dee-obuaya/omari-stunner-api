@@ -10,7 +10,7 @@ const {validateImage, isLoggedIn} = require('../utils/middleware');
 
 
 router.route('/')
-    .get(isLoggedIn, handleAsync(images.index))
+    .get(handleAsync(images.index))
     .post(isLoggedIn, upload.single('image'), validateImage, handleAsync(images.uploadImage));
 isLoggedIn
 
