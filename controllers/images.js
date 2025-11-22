@@ -3,13 +3,46 @@ const Service = require('../models/service');
 const ExpressError = require('../utils/ExpressError');
 
 module.exports.index = async (req, res) => {
-    const images = await Image.find({}).populate('service', 'service');
+    // console.log('fetching images with query:', req.query);
+    // parse query params
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
 
-    if (images.length > 0) {
-        res.status(200).json(images);
-    } else {
-        res.status(404).json({message: 'No images found'});
-    };
+    // ------ Filters ------
+    const filters = {};
+    if (req.query.service && req.query.service !== 'All') {
+        const serviceDoc = await Service.find({ tag: req.query.service.toLowerCase() });
+        // console.log('found service doc:', serviceDoc);
+        if (serviceDoc) filters.service = serviceDoc.map(s => s._id);
+        // console.log('applied service filter:', filters.service);
+    }
+
+    const skip = (page - 1) * limit;
+
+    // ------ Queries ------
+    const [images, total] = await Promise.all([
+        Image.find(filters)
+            .skip(skip)
+            .limit(limit)
+            .populate('service', 'service'),
+        Image.countDocuments(filters),
+    ]);
+    // const images = await Image.find({}).populate('service', 'service');
+
+    // console.log(images);
+    // ------ Response ------
+    // if (images.length > 0) {
+        res.status(200).json({
+            images: images,
+            pagination: {
+                totalItems: total,
+                totalPages: Math.ceil(total / limit),
+                currentPage: page,
+            },
+        });
+    // } else {
+    //     res.status(404).json({message: 'No images found'});
+    // };
 };
 
 module.exports.uploadImage = async (req, res) => {
