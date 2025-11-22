@@ -2,12 +2,13 @@ const Service = require('../models/service');
 const ExpressError = require('../utils/ExpressError');
 
 module.exports.index = async (req, res) => {
+    // console.log(req.query);
     try {
         // parse query params
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const sortField = req.query.sort || 'created_at';
-        const sortOrder = req.query.order || 'desc' ? -1 : 1;
+        const sortOrder = req.query.order?.toLowerCase() === 'desc' ? -1 : req.query.order?.toLowerCase() === 'asc' ? 1 : 1;
 
         // ------ Filters ------
         const filters = {};
@@ -31,7 +32,6 @@ module.exports.index = async (req, res) => {
                 .limit(limit),
                 Service.countDocuments(filters),
         ]);
-        // const services = await Service.find({});
 
         // ------ Response ------
         if (services.length > 0) {
