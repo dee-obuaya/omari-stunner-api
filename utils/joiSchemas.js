@@ -132,8 +132,8 @@ module.exports.bookingSchema = Joi.object({
         clientPhone: Joi.string()
             .pattern(/^[0-9]+$/)
             .required()
-            .min(10)
-            .max(10)
+            .min(11)
+            .max(13)
             .messages({
                 'string.pattern.base': '`Phone number` must contain only numbers',
                 'string.min': '`Phone number` must be at least 10 digits',
@@ -184,4 +184,27 @@ module.exports.bookingSchema = Joi.object({
             'any.required': '`Payment status` is required'
         }),
     }).required().messages({'any.required': 'Booking data is required'}),
+});
+
+module.exports.messageSchema = Joi.object({
+    message: Joi.object({
+        name: Joi.string().required().messages({'any.required': '`Name` is required'}),
+        email: Joi.string().email().required().messages({
+            'string.email': '`Email` must be a valid email',
+            'any.required': '`Email` is required'
+        }),
+        phone: Joi.string()
+            .pattern(/^[0-9]+$/)
+            .required()
+            .min(11)
+            .max(13)
+            .messages({
+                'string.pattern.base': '`Phone number` must contain only numbers',
+                'string.min': '`Phone number` must be at least 11 digits',
+                'string.max': '`Phone number` must be at most 13 digits',
+                'string.empty': '`Phone number` cannot be empty',
+                'any.required': '`Phone number` is required'
+            }),
+        body: Joi.string().required().messages({'any.required': '`Message` is required'}),
+    }).required().messages({'any.required': 'Message data is required'}),
 });
