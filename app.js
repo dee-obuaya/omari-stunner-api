@@ -26,6 +26,7 @@ const bookingRouter = require('./routes/bookings');
 const dashboardRouter = require('./routes/dashboard');
 const userRouter = require('./routes/users');
 const authRouter = require('./routes/auth');
+const messageRouter = require('./routes/messages');
 
 mongoose.connect(dbUrl);
 
@@ -99,6 +100,8 @@ app.use('/api/dashboard', dashboardRouter);
 app.use('/api/users', userRouter);
 
 app.use('/auth', authRouter);
+
+app.use('/api/messages', messageRouter);
 
 
 app.get('/', (req, res) => {
