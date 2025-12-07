@@ -116,3 +116,16 @@ module.exports.isAdmin = (req, res, next) => {
     res.status(403).json({ message: 'Forbidden: Admins only.' });
 };
 
+module.exports.ensureAuthenticatedStaff = (req, res, next) => {
+    if (req.isAuthenticated()) {
+        const role = req.user && req.user.role;
+
+        if (role === 'admin' || role === 'employee') return next();
+
+        return res.status(403).json({
+            ok: false,
+            error: 'Forbidden: staff only'
+        });
+    }
+    return res.status(401).json({ok: false, error: 'Unauthorized'});
+}
