@@ -5,15 +5,17 @@ if (process.env.NODE_ENV !=='production') {
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const session = require('express-session');
 const passport = require('passport');
 const LocalStrategy = require('passport-local');
-const MongoStore = require('connect-mongo');
+const http = require('http');
+const { Server } = require('socket.io');
 
 
 const dbUrl = process.env.DB_URL;
 const ExpressError = require('./utils/ExpressError');
 const {handleValidationError, handleCastError} = require('./utils/errorHandlers');
+const buildSession = require('./utils/session');
+const initChatSocket = require('./sockets/chatSocket');
 
 // Model Imports
 const User = require('./models/user')
@@ -27,6 +29,7 @@ const dashboardRouter = require('./routes/dashboard');
 const userRouter = require('./routes/users');
 const authRouter = require('./routes/auth');
 const messageRouter = require('./routes/messages');
+const chatRouter = require('./routes/chat');
 
 mongoose.connect(dbUrl);
 
@@ -39,25 +42,26 @@ db.once('open', () => {
 const app = express();
 const port = process.env.PORT;
 
-const sessionConfig = {
-    secret: process.env.SESSION_KEY,
-    resave: false,
-    saveUninitialized: true,
-    store: MongoStore.create({
-        mongoUrl: dbUrl,
-        collectionName: 'sessions',
-        // ttl: 60 * 60,
-    }),
-    cookie: {
-        httpOnly: true,
-        // expires: Date.now() + 1000 * 60 * 60, //Date.now() + ms * s * m * h * d
-        maxAge: 1000 * 60 * 60,
-        secure: process.env.NODE_ENV === 'production'
-    },
-    rolling: true, // refresh expiry on every request
-}
+// const sessionConfig = {
+//     secret: process.env.SESSION_KEY,
+//     resave: false,
+//     saveUninitialized: true,
+//     store: MongoStore.create({
+//         mongoUrl: dbUrl,
+//         collectionName: 'sessions',
+//         // ttl: 60 * 60,
+//     }),
+//     cookie: {
+//         httpOnly: true,
+//         // expires: Date.now() + 1000 * 60 * 60, //Date.now() + ms * s * m * h * d
+//         maxAge: 1000 * 60 * 60,
+//         secure: process.env.NODE_ENV === 'production'
+//     },
+//     rolling: true, // refresh expiry on every request
+// }
 
 // Configure CORS
+
 app.use(cors({
     origin: ['http://localhost:5173', 'http://localhost:5174'], // Allowed origins
     methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
@@ -68,8 +72,11 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(session(sessionConfig));
+// attach session
+const sessionMiddleware = buildSession(dbUrl);
+app.use(sessionMiddleware);
 
+// initialize passport and session
 app.use(passport.initialize());
 app.use(passport.session());
 passport.use(new LocalStrategy(User.authenticate()));
@@ -103,6 +110,8 @@ app.use('/auth', authRouter);
 
 app.use('/api/messages', messageRouter);
 
+app.use('/api/chats', chatRouter);
+
 
 app.get('/', (req, res) => {
     res.send('Hello from Omari Stunner!');
@@ -134,6 +143,26 @@ app.use((err, req, res, next) => {
     res.status(statusCode).send({message: message});
 });
 
-app.listen(port, () => {
+const server = http.createServer(app);
+
+// Setup Socket.io with the server
+const io = new Server(server, {
+    cors: {
+        origin: ['http://localhost:5173', 'http://localhost:5174'],
+        methods: ['GET', 'POST'],
+        credentials: true
+    }
+});
+
+// Share session middleware with Socket.io
+io.use((socket, next) => {
+    sessionMiddleware(socket.request, {}, next);
+});
+
+// initialize chat socket with io & db
+initChatSocket(io);
+
+// switch to server.listen so Socket.IO and Express share the same underlying server
+server.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
 });
