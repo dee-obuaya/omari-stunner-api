@@ -12,10 +12,20 @@ module.exports = function initChatSocket(io) {
         let adminId = null;
 
         // ------ ADMIN JOIN DASHBOARD ------
-        socket.on('admin:join', ({adminId: incomingAdminId}) => {
+        socket.on('admin:join', async ({adminId: incomingAdminId}) => {
             isAdmin = true;
             adminId = incomingAdminId;
             console.log(`🛡️ Admin Connected: ${adminId}`)
+
+            // get all open chat sessions
+            const sessions = await ChatSession.find({ isOpen: true }, 'sessionId');
+
+            sessions.forEach(s => {
+                socket.join(s.sessionId);
+                console.log(`📌 Admin auto-joined room: ${s.sessionId}`);
+            });
+
+            console.log(`🟢 Admin is now listening to all active chat sessions.`);
         });
 
         // ------ USER JOINS CHAT (from client website) ------
@@ -47,17 +57,26 @@ module.exports = function initChatSocket(io) {
             // let admin dashboards know there's a session update
             io.emit('admin:sessions:updated');
 
+            if (isAdmin) {
+                socket.join(sessionId);
+                console.log(`Admin joined NEW session: ${sessionId}`)
+            }
+
             socket.emit('user:sessionId', {sessionId});
         });
 
         // ------ TYPING INDICATORS ------
-        socket.on('user:typing', ({sessionId}) => {
-            socket.to(sessionId).emit('admin:typing', { sessionId});
+        socket.on('typing', (data) => {
+            io.to(data.sessionId).emit('typing', data);
         });
 
-        socket.on('admin:typing', ({sessionId}) => {
-            socket.to(sessionId).emit('user:typing', {sessionId});
-        });
+        // socket.on('user:typing', ({sessionId}) => {
+        //     socket.to(sessionId).emit('admin:typing', { sessionId});
+        // });
+
+        // socket.on('admin:typing', ({sessionId}) => {
+        //     socket.to(sessionId).emit('user:typing', {sessionId});
+        // });
 
 
         // ------ SEND MESSAGE ------
