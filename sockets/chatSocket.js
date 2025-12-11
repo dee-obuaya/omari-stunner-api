@@ -2,6 +2,8 @@ const { v4: uuidv4 } = require('uuid');
 const ChatSession = require('../models/chatSession');
 const ChatMessage = require('../models/chatMessage');
 
+let activeAdmins = 0;
+
 module.exports = function initChatSocket(io) {
     io.on('connection', (socket) => {
         console.log('🔌 New socket connected: ', socket.id);
@@ -16,6 +18,12 @@ module.exports = function initChatSocket(io) {
             isAdmin = true;
             adminId = incomingAdminId;
             console.log(`🛡️ Admin Connected: ${adminId}`)
+
+            activeAdmins++;
+            console.log(`🛡️ Admin Connected: ${adminId}, Total admins: ${activeAdmins}`);
+
+            // broadcast online status
+            io.emit('admin:status', { online: true });
 
             // get all open chat sessions
             const sessions = await ChatSession.find({ isOpen: true }, 'sessionId');
@@ -69,14 +77,6 @@ module.exports = function initChatSocket(io) {
         socket.on('typing', (data) => {
             io.to(data.sessionId).emit('typing', data);
         });
-
-        // socket.on('user:typing', ({sessionId}) => {
-        //     socket.to(sessionId).emit('admin:typing', { sessionId});
-        // });
-
-        // socket.on('admin:typing', ({sessionId}) => {
-        //     socket.to(sessionId).emit('user:typing', {sessionId});
-        // });
 
 
         // ------ SEND MESSAGE ------
@@ -151,6 +151,15 @@ module.exports = function initChatSocket(io) {
         // ------ DISCONNECT ------
         socket.on('disconnect', () => {
             console.log('❌ Socket disconnected: ', socket.id);
+
+            if (isAdmin) {
+                activeAdmins--;
+                console.log(`🛑 Admin left. Active admins: ${activeAdmins}`);
+
+                if (activeAdmins <= 0) {
+                    io.emit('admin:status', { online: false });
+                }
+            }
         })
     })
 }
