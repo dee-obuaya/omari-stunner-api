@@ -131,6 +131,45 @@ module.exports = function initChatSocket(io) {
             io.emit('admin:sessions:updated');
         });
 
+        // ------ MARK VISITOR MESSAGES AS SEEN ------
+        socket.on('admin:seen', async ({ sessionId }) => {
+            if (!sessionId) return;
+
+            // Get all visitor messages that are not yet seen
+            const messages = await ChatMessage.find({
+                sessionId,
+                senderType: 'visitor',
+                status: { $ne: 'seen' }
+            });
+            // console.log("Messages needing seen:", messages.length);
+
+            if (!messages.length) return;
+
+            // update them to seen
+            await ChatMessage.updateMany(
+                {
+                    sessionId,
+                    senderType: 'visitor',
+                    status: { $ne: 'seen' }
+                },
+                { status: 'seen' }
+            );
+
+            // console.log(`👁️ Messages marked seen in session ${sessionId}`);
+
+            // console.log("Emitting message:status to visitor with", {
+            //     messageIds: messages.map(m => m._id),
+            //     status: 'seen'
+            // });
+
+            // send to visitor
+            io.to(sessionId).emit('message:status', {
+                sessionId,
+                messageIds: messages.map(m => m._id),
+                status: 'seen'
+            });
+        })
+
         // ------ END SESSION ------
         socket.on('session:end', async ({ sessionId }) => {
             await ChatSession.findOneAndUpdate(
