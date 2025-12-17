@@ -27,6 +27,13 @@ const ChatMessageSchema = new Schema({
         required: false,
     },
 
+    clientId: {
+        type: String,
+        index: true,
+        unique: true,
+        sparse: true,
+    },
+
     // status indicators
     isSystem: {
         type: Boolean,
@@ -35,7 +42,7 @@ const ChatMessageSchema = new Schema({
 
     status: {
         type: String,
-        enum: ['sent', 'delivered', 'read'],
+        enum: ['sent', 'seen', 'delivered'],
         default: 'sent'
     },
 
