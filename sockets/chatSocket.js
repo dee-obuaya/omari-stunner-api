@@ -80,7 +80,7 @@ module.exports = function initChatSocket(io) {
 
 
         // ------ SEND MESSAGE ------
-        socket.on('message:send', async({sessionId, senderType, message}) => {
+        socket.on('message:send', async({sessionId, senderType, message, clientId}) => {
             if (!message) return;
 
             const finalSessionId = senderType === 'visitor' ? currentSessionId : sessionId;
@@ -91,12 +91,25 @@ module.exports = function initChatSocket(io) {
             if (['admin', 'employee'].includes(senderType)) senderId = adminId;
 
             // save message
-            const savedMessage = await ChatMessage.create({
-                sessionId: finalSessionId,
-                senderType,
-                senderId,
-                message,
-            });
+            let savedMessage;
+            try {
+                savedMessage = await ChatMessage.create({
+                    sessionId: finalSessionId,
+                    senderType,
+                    senderId,
+                    message,
+                    clientId,
+                    status: 'delivered',
+                });
+            } catch (err) {
+                if (err.code === 11000 && clientId) {
+                    // duplicate clientId, fetch existing message
+                    savedMessage = await ChatMessage.findOne({ clientId });
+                } else {
+                    console.error('Error saving message: ', err);
+                    return;
+                }
+            };
 
             // update session summary
             await ChatSession.findOneAndUpdate(
