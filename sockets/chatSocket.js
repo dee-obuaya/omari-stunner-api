@@ -80,7 +80,8 @@ module.exports = function initChatSocket(io) {
 
 
         // ------ SEND MESSAGE ------
-        socket.on('message:send', async({sessionId, senderType, message, clientId}) => {
+        socket.on('message:send',
+            async({sessionId, senderType, message, clientId}, ack) => {
             if (!message) return;
 
             const finalSessionId = senderType === 'visitor' ? currentSessionId : sessionId;
@@ -103,13 +104,26 @@ module.exports = function initChatSocket(io) {
                 });
             } catch (err) {
                 if (err.code === 11000 && clientId) {
-                    // duplicate clientId, fetch existing message
+                    // if duplicate clientId, fetch existing message
                     savedMessage = await ChatMessage.findOne({ clientId });
                 } else {
                     console.error('Error saving message: ', err);
+                    // ack failure
+                    ack?.({ ok: false, error: 'save_failed' });
                     return;
                 }
             };
+
+            ack?.({
+                ok: true,
+                messageId: savedMessage._id,
+                clientId,
+                status: 'delivered',
+                createdAt: savedMessage.createdAt,
+            });
+
+            // broadcast message to both sides
+            io.to(finalSessionId).emit('message:new', savedMessage);
 
             // update session summary
             await ChatSession.findOneAndUpdate(
@@ -119,9 +133,6 @@ module.exports = function initChatSocket(io) {
                     lastMessageAt: new Date(),
                 }
             );
-
-            // broadcast message to both sides
-            io.to(finalSessionId).emit('message:new', savedMessage);
 
             // notify admin dashboards to refresh session list
             io.emit('admin:sessions:updated');
