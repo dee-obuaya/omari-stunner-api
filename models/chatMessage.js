@@ -12,7 +12,7 @@ const ChatMessageSchema = new Schema({
 
     senderType: {
         type: String,
-        enum: ['visitor', 'admin', 'employee', 'system'],
+        enum: ['visitor', 'admin', 'system'],
         required: true,
     },
 
@@ -30,7 +30,7 @@ const ChatMessageSchema = new Schema({
     clientId: {
         type: String,
         index: true,
-        unique: true,
+        // unique: true,
         sparse: true,
     },
 
@@ -42,7 +42,7 @@ const ChatMessageSchema = new Schema({
 
     status: {
         type: String,
-        enum: ['sent', 'seen', 'delivered'],
+        enum: ['sent', 'delivered', 'seen'],
         default: 'sent'
     },
 
