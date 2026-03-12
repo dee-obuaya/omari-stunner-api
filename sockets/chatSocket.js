@@ -1,228 +1,88 @@
-const { v4: uuidv4 } = require('uuid');
 const ChatSession = require('../models/chatSession');
 const ChatMessage = require('../models/chatMessage');
 
-let activeAdmins = 0;
-
 module.exports = function initChatSocket(io) {
+    // track connected admins
+    const activeAdmins = new Set();
+
     io.on('connection', (socket) => {
-        console.log('🔌 New socket connected: ', socket.id);
+        console.log('Socket connected: ', socket.id);
 
-        // track the current session for this socket
-        let currentSessionId = null;
-        let isAdmin = false;
-        let adminId = null;
+        // determine role from handshake
+        const {role} = socket.handshake.auth || {};
 
-        // ------ ADMIN JOIN DASHBOARD ------
-        socket.on('admin:join', async ({adminId: incomingAdminId}) => {
-            isAdmin = true;
-            adminId = incomingAdminId;
-            console.log(`🛡️ Admin Connected: ${adminId}`)
+        socket.data.role = role || 'visitor';
+        socket.data.sessionId = null;
+        socket.data.adminId = null;
 
-            activeAdmins++;
-            console.log(`🛡️ Admin Connected: ${adminId}, Total admins: ${activeAdmins}`);
+        console.log(`Role: ${socket.data.role}`);
 
-            // broadcast online status
-            io.emit('admin:status', { online: true });
+        // ----------------------------------------
+        // EVENTS
+        // ----------------------------------------
 
-            // get all open chat sessions
-            const sessions = await ChatSession.find({ isOpen: true }, 'sessionId');
+        // User Join
+        socket.on('user:join', async ({ sessionId }) => {
 
-            sessions.forEach(s => {
-                socket.join(s.sessionId);
-                console.log(`📌 Admin auto-joined room: ${s.sessionId}`);
-            });
-
-            console.log(`🟢 Admin is now listening to all active chat sessions.`);
-        });
-
-        // ------ USER JOINS CHAT (from client website) ------
-        // a user provides either:
-        //  - an existing sessionId from localStorage
-        //  - OR no sessionId (we create one)
-        socket.on('user:join', async ({ sessionId, userAgent }) => {
-            // create new session if none exists
-            if (!sessionId) {
-                sessionId = uuidv4();
-                console.log('✨ New chat session created: ', sessionId);
-
-                await ChatSession.create({
-                    sessionId,
-                    user: {
-                        userAgent,
-                    },
-                    startedAt: new Date(),
-                });
-            } else {
-                console.log('📌 User rejoined session: ', sessionId);
-            }
-
-            currentSessionId = sessionId;
-
-            // join socket room for this session
-            socket.join(sessionId);
-
-            // let admin dashboards know there's a session update
-            io.emit('admin:sessions:updated');
-
-            if (isAdmin) {
-                socket.join(sessionId);
-                console.log(`Admin joined NEW session: ${sessionId}`)
-            }
-
-            socket.emit('user:sessionId', {sessionId});
-        });
-
-        // ------ TYPING INDICATORS ------
-        socket.on('typing', (data) => {
-            io.to(data.sessionId).emit('typing', data);
-        });
-
-
-        // ------ SEND MESSAGE ------
-        socket.on('message:send',
-            async({sessionId, senderType, message, clientId}, ack) => {
-            if (!message) return;
-
-            const finalSessionId = senderType === 'visitor' ? currentSessionId : sessionId;
-
-            if (!finalSessionId) return;
-
-            let senderId = null;
-            if (['admin', 'employee'].includes(senderType)) senderId = adminId;
-
-            // save message
-            let savedMessage;
             try {
-                savedMessage = await ChatMessage.create({
-                    sessionId: finalSessionId,
-                    senderType,
-                    senderId,
-                    message,
-                    clientId,
-                    status: 'delivered',
-                });
-            } catch (err) {
-                if (err.code === 11000 && clientId) {
-                    // if duplicate clientId, fetch existing message
-                    savedMessage = await ChatMessage.findOne({ clientId });
-                } else {
-                    console.error('Error saving message: ', err);
-                    // ack failure
-                    ack?.({ ok: false, error: 'save_failed' });
+                if (!sessionId) {
+                    console.log('user:join missing sessionId');
                     return;
                 }
-            };
 
-            ack?.({
-                ok: true,
-                messageId: savedMessage._id,
-                clientId,
-                status: 'delivered',
-                createdAt: savedMessage.createdAt,
-            });
+                socket.join(sessionId);
 
-            // broadcast message to both sides
-            io.to(finalSessionId).emit('message:new', savedMessage);
+                socket.data.sessionId = sessionId;
+                socket.data.role = 'visitor';
 
-            // update session summary
-            await ChatSession.findOneAndUpdate(
-                { sessionId: finalSessionId },
-                {
-                    lastMessage: message,
-                    lastMessageAt: new Date(),
-                }
-            );
+                console.log(`Visitor joined session ${sessionId}`);
 
-            // notify admin dashboards to refresh session list
-            io.emit('admin:sessions:updated');
-        });
+                socket.emit('user:joined', {sessionId});
 
-        // ------ ADMIN JOINS + TAKES OVER A SESSION
-        socket.on('admin:joinSession', async ({sessionId}) => {
-            currentSessionId = sessionId;
-            socket.join(sessionId);
-
-            // assign admin to session if none assigned
-            const session = await ChatSession.findOne({ sessionId });
-            if (session && !session.assignedStaff) {
-                session.assignedStaff = adminId;
-                await session.save();
+                socket.emit('admin:status', {
+                    online: activeAdmins.size > 0
+                });
+            } catch (err) {
+                console.error('user:join error: ', err);
             }
-
-            console.log(`🛡️ Admin ${adminId} joined session ${sessionId}`);
-
-            io.emit('admin:sessions:updated');
         });
 
-        // ------ MARK VISITOR MESSAGES AS SEEN ------
-        socket.on('admin:seen', async ({ sessionId }) => {
-            if (!sessionId) return;
+        // Admin Connect (comes online)
+        socket.on('admin:connect', async () => {
+            try {
 
-            // Get all visitor messages that are not yet seen
-            const messages = await ChatMessage.find({
-                sessionId,
-                senderType: 'visitor',
-                status: { $ne: 'seen' }
-            });
-            // console.log("Messages needing seen:", messages.length);
+                socket.data.role = 'admin';
+                socket.data.adminId = socket.request?.user?._id || socket.id;
 
-            if (!messages.length) return;
-
-            // update them to seen
-            await ChatMessage.updateMany(
-                {
-                    sessionId,
-                    senderType: 'visitor',
-                    status: { $ne: 'seen' }
-                },
-                { status: 'seen' }
-            );
-
-            // console.log(`👁️ Messages marked seen in session ${sessionId}`);
-
-            // console.log("Emitting message:status to visitor with", {
-            //     messageIds: messages.map(m => m._id),
-            //     status: 'seen'
-            // });
-
-            // send to visitor
-            io.to(sessionId).emit('message:status', {
-                sessionId,
-                messageIds: messages.map(m => m._id),
-                status: 'seen'
-            });
-        })
-
-        // ------ END SESSION ------
-        socket.on('session:end', async ({ sessionId }) => {
-            await ChatSession.findOneAndUpdate(
-                {sessionId},
-                {
-                    isOpen: false,
-                    endedAt: new Date(),
+                if (socket.data.adminId) {
+                    activeAdmins.add(socket.data.adminId);
                 }
-            );
 
-            io.to(sessionId).emit('session:ended');
-            io.emit('admin:session:updated');
+                console.log(`Admin connected (${activeAdmins.size} online)`);
 
-            console.log(`💀 Session ended: ${sessionId}`);
+                io.emit('admin:status', {
+                    online: true
+                });
+            } catch (err) {
+                console.error('admin:connect error: ', err);
+            }
         });
 
-
-        // ------ DISCONNECT ------
+        // ----------------------------------------
+        // DISCONNECT
+        // ----------------------------------------
         socket.on('disconnect', () => {
-            console.log('❌ Socket disconnected: ', socket.id);
+            console.log('Socket disconnected: ', socket.id);
 
-            if (isAdmin) {
-                activeAdmins--;
-                console.log(`🛑 Admin left. Active admins: ${activeAdmins}`);
+            if (socket.data.role === 'admin' && socket.data.adminId) {
+                activeAdmins.delete(socket.data.adminId);
 
-                if (activeAdmins <= 0) {
-                    io.emit('admin:status', { online: false });
-                }
+                console.log('Admin disconnected (${activeAdmins.size} online)');
+
+                // if (activeAdmins === 0) {
+                    io.emit('admin:status', {online: activeAdmins.size > 0});
+                // }
             }
-        })
-    })
-}
+        });
+    });
+};
