@@ -17,6 +17,22 @@ module.exports = function initChatSocket(io) {
 
         console.log(`Role: ${socket.data.role}`);
 
+        // ---------------------------------------------------
+        // Auto-register admin sockets (resilience fix)
+        // ---------------------------------------------------
+        if (socket.data.role === 'admin') {
+
+            socket.data.adminId = socket.request?.user?._id || socket.id
+
+            activeAdmins.add(socket.data.adminId);
+
+            console.log(`Admin connected (${activeAdmins.size} online)`);
+
+            io.emit('admin:status', {
+                online: activeAdmins.size > 0
+            });
+        }
+
         // ----------------------------------------
         // EVENTS
         // ----------------------------------------
