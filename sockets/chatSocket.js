@@ -77,7 +77,7 @@ module.exports = function initChatSocket(io) {
                 console.log(`Admin connected (${activeAdmins.size} online)`);
 
                 io.emit('admin:status', {
-                    online: true
+                    online: activeAdmins.size > 0
                 });
             } catch (err) {
                 console.error('admin:connect error: ', err);
@@ -93,7 +93,7 @@ module.exports = function initChatSocket(io) {
             if (socket.data.role === 'admin' && socket.data.adminId) {
                 activeAdmins.delete(socket.data.adminId);
 
-                console.log('Admin disconnected (${activeAdmins.size} online)');
+                console.log(`Admin disconnected (${activeAdmins.size} online)`);
 
                 // if (activeAdmins === 0) {
                     io.emit('admin:status', {online: activeAdmins.size > 0});
