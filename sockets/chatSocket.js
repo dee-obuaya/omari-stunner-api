@@ -36,6 +36,31 @@ module.exports = function initChatSocket(io) {
         // ----------------------------------------
         // EVENTS
         // ----------------------------------------
+        socket.on('message:seen', async ({ sessionId }) => {
+            try {
+                if (!sessionId) return;
+
+                await ChatMessage.updateMany(
+                    {
+                        sessionId,
+                        sender: 'visitor',
+                        status: { $in: ['sent', 'delivered'] }
+                    },
+                    {
+                        status: 'seen'
+                    }
+                );
+
+                io.to(sessionId).emit('message:status', {
+                    sessionId,
+                    status: 'seen'
+                });
+
+                console.log(`👁️ Messages seen in ${sessionId}`);
+            } catch (err) {
+                console.error('message:seen error:', err);
+            }
+        });
 
         // ---------------------------------
         // USERS
@@ -55,7 +80,8 @@ module.exports = function initChatSocket(io) {
                 socket.data.sessionId = sessionId;
                 socket.data.role = 'visitor';
 
-                console.log(`Visitor joined session ${sessionId}`);
+                // console.log(`Visitor joined session ${sessionId}`);
+                console.log(`👤 Visitor joined room: ${sessionId}`);
 
                 socket.emit('user:joined', {sessionId});
 
@@ -67,7 +93,7 @@ module.exports = function initChatSocket(io) {
             }
         });
 
-        // USer Sends Message
+        // User Sends Message
         socket.on('user:sendMessage', async (payload) => {
             console.log('📩 user:sendMessage received:', payload);
             try {
@@ -111,7 +137,10 @@ module.exports = function initChatSocket(io) {
                 // update session last message time
                 await ChatSession.updateOne(
                     { _id: sessionId },
-                    { lastMessageAt: new Date() }
+                    {
+                        lastMessage: message,
+                        lastMessageAt: new Date()
+                    }
                 )
 
                 // emit message
@@ -132,6 +161,7 @@ module.exports = function initChatSocket(io) {
         // ---------------------------------
         // ADMIN
         // ---------------------------------
+
         // Admin Connect (comes online)
         socket.on('admin:connect', async () => {
             try {
@@ -148,8 +178,50 @@ module.exports = function initChatSocket(io) {
                 io.emit('admin:status', {
                     online: activeAdmins.size > 0
                 });
+
+            // mark all undelivered messages as delivered
+
+            const result = await ChatMessage.updateMany(
+                {
+                    sender: 'visitor',
+                    status: 'sent',
+                },
+                {
+                    status: 'delivered'
+                }
+            );
+
+            console.log(`Delivered ${result.modifiedCount} messages`);
+
+            // notify all visitors
+            io.emit('message:status', {
+                status: 'delivered'
+            });
+
             } catch (err) {
                 console.error('admin:connect error: ', err);
+            }
+        });
+
+        // Admin Join Session
+        socket.on('admin:joinSession', async ({ sessionId }) => {
+            console.log('joinSession received: ', sessionId);
+            try {
+                if (!sessionId) return;
+
+                socket.join(sessionId);
+
+                console.log(`Admin joined session ${sessionId}`);
+
+                // send existing messages
+                const messages = await ChatMessage.find({ sessionId })
+                    .sort({ createdAt: 1 });
+                console.log('messages found: ', messages.length);
+
+                socket.emit('chat:history', messages);
+                console.log(`📦 Sending ${messages.length} messages`);
+            } catch (err) {
+                console.error('admin:joinSession error: ', err);
             }
         });
 
