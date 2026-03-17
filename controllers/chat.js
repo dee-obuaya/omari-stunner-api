@@ -5,11 +5,11 @@ const ChatMessage = require('../models/chatMessage');
 
 module.exports.createChatSession = async(req, res) => {
     try {
-        const sessionId = uuidv4();
+        // const sessionId = uuidv4();
         const { name = null, email = null, ip = null, userAgent = null, anonId = null } = req.body || {};
 
         const doc = {
-            sessionId,
+            // sessionId,
             user: {name, email, ip,userAgent, anonId},
             isOpen: true,
             startedAt: new Date(),
@@ -20,9 +20,9 @@ module.exports.createChatSession = async(req, res) => {
 
         return res.json({
             ok: true,
-            sessionId,
+            // sessionId,
             session: {
-                sessionId: session.sessionId,
+                sessionId: session._id.toString(),
                 user: session.user,
                 isOpen: session.isOpen,
                 startedAt: session.startedAt,
@@ -54,16 +54,30 @@ module.exports.getChatSessions = async (req, res) => {
             .lean();
 
         // Optionally include messagesCount for each session (small extra cost)
-        const sessionIds = sessions.map(s => s.sessionId);
+        const sessionIds = sessions.map(s => s._id.toString());
         const counts = await ChatMessage.aggregate([
-            { $match: { sessionId: { $in: sessionIds } } },
-            { $group: { _id: '$sessionId', count: { $sum: 1 } } }
+            {
+                $addFields: {
+                    sessionIdStr: { $toString: '$sessionId' }
+                }
+            },
+            {
+                $match: {
+                    sessionIdStr: { $in: sessionIds }
+                }
+            },
+            {
+                $group: {
+                    _id: '$sessionIdStr',
+                    count: { $sum: 1 }
+                }
+            }
         ]);
 
         const countsMap = counts.reduce((acc, c) => { acc[c._id] = c.count; return acc; }, {});
 
         const shaped = sessions.map(s => ({
-            sessionId: s.sessionId,
+            sessionId: s._id.toString(),
             user: s.user,
             assignedStaff: s.assignedStaff || null,
             isOpen: s.isOpen,
@@ -71,7 +85,7 @@ module.exports.getChatSessions = async (req, res) => {
             lastMessageAt: s.lastMessageAt,
             startedAt: s.startedAt,
             endedAt: s.endedAt || null,
-            messagesCount: countsMap[s.sessionId] || 0,
+            messagesCount: countsMap[s._id.toString()] || 0,
         }));
 
         return res.json({ ok: true, sessions: shaped });
