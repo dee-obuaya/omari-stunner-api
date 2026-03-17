@@ -2,12 +2,12 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const ChatSessionSchema = new Schema({
-    sessionId: {
-        type: String,
-        required: true,
-        unique: true,
-        index: true,
-    },
+    // sessionId: {
+    //     type: String,
+    //     required: true,
+    //     unique: true,
+    //     index: true,
+    // },
 
     // optional user metadata (filled if provided)
     user: {

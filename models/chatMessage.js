@@ -4,13 +4,17 @@ const { required } = require('joi');
 const Schema = mongoose.Schema;
 
 const ChatMessageSchema = new Schema({
+    // sessionId: {
+    //     type: String,
+    //     required: true,
+    //     index: true,
+    // },
     sessionId: {
-        type: String,
-        required: true,
-        index: true,
+        type: Schema.Types.ObjectId,
+        ref: 'ChatSession'
     },
 
-    senderType: {
+    sender: {
         type: String,
         enum: ['visitor', 'admin', 'system'],
         required: true,
