@@ -10,7 +10,7 @@ router.post('/visitor/start', handleAsync(chats.createChatSession));
 
 // admin list of sessions (recent first)
 // query params (optional): ?open=true|false  ?limit=50
-router.get('/admin/chats', ensureAuthenticatedStaff, handleAsync(chats.getChatSessions));
+router.get('/admin/chat-sessions', ensureAuthenticatedStaff, handleAsync(chats.getChatSessions));
 
 // fetch messages for a session (used by admin when opening a chat)
 // query params: ?limit=200 (default newest first, we return ascending by createdAt)
