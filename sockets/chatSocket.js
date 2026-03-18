@@ -52,7 +52,7 @@ module.exports = function initChatSocket(io) {
                 );
 
                 io.to(sessionId).emit('message:status', {
-                    sessionId,
+                    sessionId: sessionId.toString(),
                     status: 'seen'
                 });
 
@@ -152,7 +152,7 @@ module.exports = function initChatSocket(io) {
 
                 // emit message
                 io.to(sessionId).emit('chat:message', {
-                    sessionId,
+                    sessionId: sessionId.toString(),
                     sender: 'visitor',
                     message: savedMessage.message,
                     status: savedMessage.status,
@@ -194,6 +194,7 @@ module.exports = function initChatSocket(io) {
                 status: 'sent',
             });
 
+            // downgrade protection
             const result = await ChatMessage.updateMany(
                 {
                     _id: { $in: messagesToDeliver.map(m => m._id) },
