@@ -88,6 +88,12 @@ module.exports = function initChatSocket(io) {
                 socket.emit('admin:status', {
                     online: activeAdmins.size > 0
                 });
+
+                // visitor receive history (sync safety)
+                const messages = await ChatMessage.find({ sessionId })
+                    .sort({ createdAt: 1 });
+
+                socket.emit('chat:history', messages);
             } catch (err) {
                 console.error('user:join error: ', err);
             }
