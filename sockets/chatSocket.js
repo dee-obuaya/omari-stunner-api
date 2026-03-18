@@ -131,6 +131,7 @@ module.exports = function initChatSocket(io) {
                     sessionId,
                     sender: 'visitor',
                     message,
+                    status: 'sent',
                     createdAt: new Date()
                 });
 
@@ -148,6 +149,7 @@ module.exports = function initChatSocket(io) {
                     sessionId,
                     sender: 'visitor',
                     message: savedMessage.message,
+                    status: savedMessage.status,
                     createdAt: savedMessage.createdAt
                 });
 
@@ -181,22 +183,24 @@ module.exports = function initChatSocket(io) {
 
             // mark all undelivered messages as delivered
 
+            const messagesToDeliver = await ChatMessage.find({
+                sender: 'visitor',
+                status: 'sent',
+            });
+
             const result = await ChatMessage.updateMany(
-                {
-                    sender: 'visitor',
-                    status: 'sent',
-                },
-                {
-                    status: 'delivered'
-                }
+                { _id: { $in: messagesToDeliver.map(m => m._id) } },
+                { status: 'delivered' }
             );
 
-            console.log(`Delivered ${result.modifiedCount} messages`);
-
-            // notify all visitors
-            io.emit('message:status', {
-                status: 'delivered'
+            messagesToDeliver.forEach(msg => {
+                io.to(msg.sessionId.toString()).emit('message:status', {
+                    sessionId: msg.sessionId.toString(),
+                    status: 'delivered'
+                });
             });
+
+            console.log(`Delivered ${result.modifiedCount} messages`);
 
             } catch (err) {
                 console.error('admin:connect error: ', err);
