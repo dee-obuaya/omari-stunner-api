@@ -189,7 +189,10 @@ module.exports = function initChatSocket(io) {
             });
 
             const result = await ChatMessage.updateMany(
-                { _id: { $in: messagesToDeliver.map(m => m._id) } },
+                {
+                    _id: { $in: messagesToDeliver.map(m => m._id) },
+                    status: 'sent'
+                },
                 { status: 'delivered' }
             );
 
