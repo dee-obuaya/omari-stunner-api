@@ -103,34 +103,64 @@ module.exports = function initChatSocket(io) {
         socket.on('user:sendMessage', async (payload) => {
             console.log('📩 user:sendMessage received:', payload);
             try {
-                console.log("➡️ Incoming data:", payload);
+                console.log("➡️ Incoming data:", {
+                    sessionId: payload.sessionId,
+                    type: typeof payload.sessionId
+                });
                 let { sessionId, message } = payload;
 
                 if (!message) return;
 
                 // create session if none exists
+                let isNewSession = false;
+
                 if (!sessionId) {
-                    console.log("🆕 Creating new session...");
                     const newSession = await ChatSession.create({
                         user: {},
                         isOpen: true,
                         startedAt: new Date(),
                         lastMessageAt: new Date()
                     });
-                    sessionId = newSession._id.toString();
 
-                    console.log("✅ Session created:", newSession.id);
+                    sessionId = newSession._id.toString();
+                    isNewSession = true;
 
                     socket.join(sessionId);
-
                     socket.data.sessionId = sessionId;
 
                     socket.emit('session:created', { sessionId });
-
-                    console.log(`New chat session created: ${sessionId}`);
                 } else {
                     socket.join(sessionId);
                 }
+                // if (!sessionId) {
+                //     console.log("🆕 Creating new session...");
+                //     const newSession = await ChatSession.create({
+                //         user: {},
+                //         isOpen: true,
+                //         startedAt: new Date(),
+                //         lastMessageAt: new Date()
+                //     });
+                //     sessionId = newSession._id.toString();
+
+                //     console.log("✅ Session created:", newSession.id);
+
+                //     socket.join(sessionId);
+
+                //     socket.data.sessionId = sessionId;
+
+                //     socket.emit('session:created', { sessionId });
+
+                //     console.log(`New chat session created: ${sessionId}`);
+
+                //     // io.to('admins').emit('chat:newSession', {
+                //     //     _id: sessionId,
+                //     //     lastMessage: message,
+                //     //     lastMessageAt: new Date(),
+                //     //     startedAt: newSession.startedAt
+                //     // });
+                // } else {
+                //     socket.join(sessionId);
+                // }
 
                 // save message
                 const savedMessage = await ChatMessage.create({
@@ -151,13 +181,38 @@ module.exports = function initChatSocket(io) {
                 )
 
                 // emit message
+                // send to users in chat
                 io.to(sessionId).emit('chat:message', {
+                    _id: savedMessage._id,
                     sessionId: sessionId.toString(),
                     sender: 'visitor',
                     message: savedMessage.message,
                     status: savedMessage.status,
                     createdAt: savedMessage.createdAt
                 });
+
+                // send to admins globally
+                io.to('admins').emit('chat:message', {
+                    _id: savedMessage._id,
+                    sessionId: sessionId.toString(),
+                    sender: 'visitor',
+                    message: savedMessage.message,
+                    status: savedMessage.status,
+                    createdAt: savedMessage.createdAt
+                })
+
+                // const isNewSession = !payload.sessionId;
+
+                if (isNewSession) {
+                    console.log('🚨 EMITTING NEW SESSION:', sessionId);
+
+                    io.to('admins').emit('chat:newSession', {
+                        _id: sessionId,
+                        lastMessage: savedMessage.message,
+                        lastMessageAt: savedMessage.createdAt,
+                        startedAt: new Date()
+                    });
+                }
 
                 console.log(`Visitor message in ${sessionId}`);
             } catch (err) {
@@ -215,6 +270,11 @@ module.exports = function initChatSocket(io) {
             } catch (err) {
                 console.error('admin:connect error: ', err);
             }
+        });
+
+        // Admin join
+        socket.on('admin:join', () => {
+            socket.join('admins');
         });
 
         // Admin Join Session
