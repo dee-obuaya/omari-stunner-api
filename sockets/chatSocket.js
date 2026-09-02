@@ -285,6 +285,12 @@ module.exports = function initChatSocket(io) {
             try {
                 if (!sessionId) return;
 
+                // leave the previously active session room, if any
+                if (socket.data.currentSessionId && socket.data.currentSessionId !== sessionId) {
+                    socket.leave(socket.data.currentSessionId);
+                }
+                socket.data.currentSessionId = sessionId;
+
                 socket.join(sessionId);
 
                 console.log(`Admin joined session ${sessionId}`);
