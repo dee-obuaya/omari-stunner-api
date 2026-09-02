@@ -154,10 +154,12 @@ const io = new Server(server, {
     }
 });
 
+const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
+
 // Share session middleware with Socket.io
-io.use((socket, next) => {
-    sessionMiddleware(socket.request, {}, next);
-});
+io.use(wrap(sessionMiddleware));
+io.use(wrap(passport.initialize()));
+io.use(wrap(passport.session()));
 
 // initialize chat socket with io & db
 initChatSocket(io);
