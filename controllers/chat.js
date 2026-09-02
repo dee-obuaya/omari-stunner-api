@@ -143,7 +143,7 @@ module.exports.postSystemMessage = async (req, res) => {
 
     const systemMsg = await ChatMessage.create({
         sessionId,
-        senderType: 'system',
+        sender: 'system',
         senderId: null,
         message: content,
         isSystem: true,
