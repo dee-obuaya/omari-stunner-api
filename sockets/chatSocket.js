@@ -162,12 +162,14 @@ module.exports = function initChatSocket(io) {
                 //     socket.join(sessionId);
                 // }
 
+                const initialStatus = activeAdmins.size > 0 ? 'delivered' : 'sent';
+
                 // save message
                 const savedMessage = await ChatMessage.create({
                     sessionId,
                     sender: 'visitor',
                     message,
-                    status: 'sent',
+                    status: initialStatus,
                     createdAt: new Date()
                 });
 
