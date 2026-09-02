@@ -299,6 +299,41 @@ module.exports = function initChatSocket(io) {
             }
         });
 
+        // Admin Sends Message
+        socket.on('admin:sendMessage', async ({ sessionId, message }) => {
+            try {
+                if (!sessionId || !message) return;
+
+                const savedMessage = await ChatMessage.create({
+                    sessionId,
+                    sender: 'admin',
+                    senderId: socket.data.adminId || null,
+                    message,
+                    status: 'sent',
+                    createdAt: new Date()
+                });
+
+                await ChatSession.updateOne(
+                    { _id: sessionId },
+                    { lastMessage: message, lastMessageAt: new Date() }
+                );
+
+                const payload = {
+                    _id: savedMessage._id,
+                    sessionId: sessionId.toString(),
+                    sender: 'admin',
+                    message: savedMessage.message,
+                    status: savedMessage.status,
+                    createdAt: savedMessage.createdAt
+                };
+
+                io.to(sessionId).emit('chat:message', payload);
+                io.to('admins').emit('chat:message', payload);
+            } catch (err) {
+                console.error('admin:sendMessage error: ', err);
+            }
+        });
+
         // ----------------------------------------
         // DISCONNECT
         // ----------------------------------------
