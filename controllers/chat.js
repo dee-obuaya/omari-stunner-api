@@ -151,9 +151,9 @@ module.exports.postSystemMessage = async (req, res) => {
     });
 
     // update session preview
-    await ChatSession.findOneAndUpdate({ sessionId }, {
+    await ChatSession.findByIdAndUpdate(sessionId, {
         $set: { lastMessage: content || '[system]', lastMessageAt: new Date() },
-        $inc: { messagesCount: 1 }
+        // $inc: { messagesCount: 1 }
     });
 
     // broadcast via socket (if your socket server listens to DB or you emit manually in your socket handlers)
@@ -168,7 +168,7 @@ module.exports.claimSession = async (req, res) => {
     const { sessionId } = req.params;
     const userId = req.user && req.user._id;
 
-    const session = await ChatSession.findOne({ sessionId });
+    const session = await ChatSession.findById(sessionId);
     if (!session) return res.status(404).json({
         ok: false,
         error: 'Session not found'
@@ -190,7 +190,7 @@ module.exports.claimSession = async (req, res) => {
 module.exports.endSession = async (req, res) => {
     const { sessionId } = req.params;
 
-    const session = await ChatSession.findOne({ sessionId });
+    const session = await ChatSession.findById(sessionId);
     if (!session) return res.status(404).json({
         ok: false,
         error: 'Session not found'
