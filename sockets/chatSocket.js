@@ -22,7 +22,7 @@ module.exports = function initChatSocket(io) {
         // ---------------------------------------------------
         if (socket.data.role === 'admin') {
 
-            socket.data.adminId = socket.request?.user?._id || socket.id
+            socket.data.adminId = socket.request?.user ? String(socket.request.user._id) : socket.id;
 
             activeAdmins.add(socket.data.adminId);
 
